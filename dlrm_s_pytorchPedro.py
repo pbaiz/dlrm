@@ -1017,6 +1017,7 @@ if __name__ == "__main__":
                         )
                         + "loss {:.6f}, accuracy {:3.3f} %".format(gL, gA * 100)
                     )
+                    #print(classification_rep)
                     # Uncomment the line below to print out the total time with overhead
                     print("Accumulated time so far: {}" \
                           .format(time_wrap(use_gpu) - accum_time_begin))
@@ -1138,6 +1139,7 @@ if __name__ == "__main__":
                         print(" ms")
                         print("{} \n {}".format('Confusion Matrix', validation_results['confusion_matrix']))
                         print("{} \n {}".format('Classification Report', validation_results['classification_report']))
+                        #print("## Metrics End")
                         gA_test = validation_results['accuracy']
                         gL_test = validation_results['loss']
                     else:
@@ -1226,7 +1228,7 @@ if __name__ == "__main__":
     if args.enable_profiling:
         with open("dlrm_s_pytorch.prof", "w") as prof_f:
             prof_f.write(prof.key_averages().table(sort_by="cpu_time_total"))
-            prof.export_chrome_trace("./dlrm_s_pytorch.json")
+            prof.export_chrome_trace("./dlrm_s_pytorch.jsson")
         # print(prof.key_averages().table(sort_by="cpu_time_total"))
 
     # plot compute graph
@@ -1238,7 +1240,7 @@ if __name__ == "__main__":
         #)
         V = Z.mean() if args.inference_only else E
         dot = make_dot(V, params=dict(dlrm.named_parameters()))
-        dot.render('dlrm_s_pytorch_graph') # write .pdf file
+        dot.render('dlrm_s_pytorch_graph') # write .pdf file  PBV
 
     # test prints
     if not args.inference_only and args.debug_mode:

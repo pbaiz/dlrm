@@ -23,29 +23,74 @@ echo "run pytorch ..."
 # --arch-mlp-bot=... (the input to the first layer of bottom mlp)
 #$dlrm_pt_bin --arch-sparse-feature-size=16 --arch-mlp-bot="13-512-256-64-16" --arch-mlp-top="512-256-1" --data-generation=dataset --data-set=kaggle --raw-data-file=./input/train.txt --processed-data-file=./input/kaggleAdDisplayChallenge_processed.npz --loss-function=bce --round-targets=True --learning-rate=0.1 --mini-batch-size=128 --print-freq=1024 --print-time --test-mini-batch-size=16384 --test-num-workers=16 $dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
 #$dlrm_pt_bin --arch-sparse-feature-size=16 --arch-mlp-bot="13-512-256-64-16" --arch-mlp-top="512-256-1" --data-generation=dataset --data-set=kaggle --raw-data-file=./input/trainday0day0.txt --processed-data-file=./input/kaggleAdDisplayChallenge_processed.npz --loss-function=bce --round-targets=True --learning-rate=0.1 --mini-batch-size=128 --print-freq=1024 --print-time --test-mini-batch-size=16384 --test-num-workers=16 --save-model=dlrm_criteo_kaggle.pytorch $dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
+#python dlrm_s_pytorch.py \
+#--arch-sparse-feature-size=16 \
+#--arch-mlp-bot="13-512-256-64-16" \
+#--arch-mlp-top="512-256-1" \
+#--data-generation=dataset \
+#--data-set=kaggle \
+#--raw-data-file=./input/trainday0day0.txt \
+#--processed-data-file=./input/kaggleAdDisplayChallenge_processed.npz \
+#--loss-function=bce \
+#--round-targets=True \
+#--learning-rate=0.1 \
+#--mini-batch-size=128 \
+#--print-freq=256 \
+#--test-freq=128 \
+#--enable-profiling \
+#--mlperf-logging \
+#--plot-compute-graph \
+#--print-time \
+#--test-mini-batch-size=256 \
+#--test-num-workers=16 \
+#--save-model=dlrm_criteo_kaggle.pytorch \
+#$dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
+#--debug-mode \
+#python dlrm_s_pytorch.py \
+#--arch-sparse-feature-size=16 \
+#--arch-mlp-bot="13-512-256-64-16" \
+#--arch-mlp-top="512-256-1" \
+#--data-generation=dataset \
+#--data-set=kaggle \
+#--raw-data-file=./input/trainday0day0day0.txt \
+#--processed-data-file=./input/kaggleAdDisplayChallenge_processed2.npz \
+#--loss-function=bce \
+#--round-targets=True \
+#--learning-rate=0.1 \
+#--mini-batch-size=128 \
+#--print-freq=128 \
+#--test-freq=128 \
+#--enable-profiling \
+#--mlperf-logging \
+#--plot-compute-graph \
+#--print-time \
+#--test-mini-batch-size=128 \
+#--test-num-workers=16 \
+#--save-model=dlrm_criteo_kaggle.pytorch \
+#$dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
 python dlrm_s_pytorch.py \
 --arch-sparse-feature-size=16 \
 --arch-mlp-bot="13-512-256-64-16" \
 --arch-mlp-top="512-256-1" \
 --data-generation=dataset \
 --data-set=kaggle \
---raw-data-file=./input/trainday0day0.txt \
---processed-data-file=./input/kaggleAdDisplayChallenge_processed.npz \
+--raw-data-file=./input/trainday0day0day0day0.txt \
+--processed-data-file=./input/kaggleAdDisplayChallenge_processed3.npz \
 --loss-function=bce \
 --round-targets=True \
 --learning-rate=0.1 \
---mini-batch-size=128 \
---print-freq=256 \
---test-freq=128 \
+--mini-batch-size=32 \
+--print-freq=64 \
+--test-freq=64 \
 --enable-profiling \
 --mlperf-logging \
 --plot-compute-graph \
 --print-time \
---test-mini-batch-size=256 \
+--test-mini-batch-size=32 \
 --test-num-workers=16 \
 --save-model=dlrm_criteo_kaggle.pytorch \
 $dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
-#--debug-mode \
+
 
 #echo "run caffe2 ..."
 ## WARNING: the following parameters will be set based on the data set

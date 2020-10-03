@@ -1,7 +1,6 @@
 import optuna
 import neptune
 import neptunecontrib.monitoring.optuna as optuna_utils
-
 from dlrm_s_pytorch_class import DLRM_Model
 
 
@@ -9,8 +8,70 @@ neptune.init(api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFw
              project_qualified_name='pedrobaiz/dlrm')
 
 
+neptune.create_experiment('optuna-sweep')
+neptune_callback = optuna_utils.NeptuneCallback()
 
-dlrm_model = DLRM_Model()
+def objective(trial):
+
+    # Suggest values of the hyperparameters using a trial object.
+    den_fea = 13
+    n_bot_layers = trial.suggest_int('n_bot_layers', 2, 5)
+    n_top_layers = trial.suggest_int('n_top_layers', 2, 4)
+    bot_layers = []
+    top_layers = []
+    arch_sparse_feature_size = trial.suggest_int('arch_sparse_feature_size', 16, 32)
+    for i in range(n_bot_layers):
+        if i == 0:
+            bot_layers.append(den_fea)  # This value is related to the number of numerical columns (fixed by input data)
+        elif i == (n_bot_layers-1):
+            bot_layers.append(arch_sparse_feature_size)  # This value is related to the arch_sparse_feature_size
+        else:
+            bot_features = trial.suggest_int('n_bot_units_l{}'.format(i), 32, 512)
+            bot_layers.append(bot_features)
+    for i in range(n_top_layers):
+        if i == (n_top_layers-1):
+            top_layers.append(1)  # This value should always be 1, as it is a binary classification
+        else:
+            top_features = trial.suggest_int('n_top_units_l{}'.format(i), 32, 512)
+            top_layers.append(top_features)
+    arch_mlp_bot = '-'.join(str(x) for x in bot_layers)
+    arch_mlp_top = '-'.join(str(x) for x in top_layers)
+    #loss_function = trial.suggest_categorical('loss_function', ['mse', 'bce'])
+    learning_rate = trial.suggest_float('learning_rate', 0.001, 0.1)
+    print('MLP bot', arch_mlp_bot)
+    print('MLP top', arch_mlp_top)
+    dlrm_model = DLRM_Model(
+        arch_sparse_feature_size=arch_sparse_feature_size, #16,
+        arch_mlp_bot=arch_mlp_bot, #'13-512-256-64-16',
+        arch_mlp_top=arch_mlp_top, #'512-256-1',
+        data_generation='dataset',
+        data_set='kaggle',
+        raw_data_file='./input/trainday0day0.txt',
+        #processed_data_file='./input/kaggleAdDisplayChallenge_processed.npz',
+        loss_function='bce', #loss_function,
+        round_targets=True,
+        learning_rate=learning_rate,
+        mini_batch_size=128,
+        print_freq=256,
+        test_freq=128,
+        mlperf_logging=True,
+        print_time=True,
+        test_mini_batch_size=256,
+        test_num_workers=16
+        # enable_profiling=True,
+        # plot_compute_graph=True,
+        # save_model='dlrm_criteo_kaggle.pytorch'
+    )
+    validation_results = dlrm_model.run()
+    for key in validation_results:
+        if key not in ['classification_report', 'confusion_matrix']:
+            neptune.log_metric(key, validation_results[key])
+    return validation_results['best_pre_auc_test'] # ['best_auc_test']  #
+
+
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=100, callbacks=[neptune_callback])
+optuna_utils.log_study(study)
 
 
 # See sample available options for optimising hyper-parameters

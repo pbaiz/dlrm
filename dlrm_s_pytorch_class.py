@@ -611,26 +611,26 @@ class DLRM_Model(object):
         # input data
         if (self.args.data_generation == "dataset"):
 
-            train_data, train_ld, test_data, test_ld = \
+            self.train_data, self.train_ld, self.test_data, self.test_ld = \
                 dp.make_criteo_data_and_loaders(self.args)
-            nbatches = self.args.num_batches if self.args.num_batches > 0 else len(train_ld)
-            nbatches_test = len(test_ld)
+            nbatches = self.args.num_batches if self.args.num_batches > 0 else len(self.train_ld)
+            nbatches_test = len(self.test_ld)
 
-            ln_emb = train_data.counts
+            ln_emb = self.train_data.counts
             # enforce maximum limit on number of vectors per embedding
             if self.args.max_ind_range > 0:
                 ln_emb = np.array(list(map(
                     lambda x: x if x < self.args.max_ind_range else self.args.max_ind_range,
                     ln_emb
                 )))
-            m_den = train_data.m_den
+            m_den = self.train_data.m_den
             ln_bot[0] = m_den
         else:
             # input and target at random
             ln_emb = np.fromstring(self.args.arch_embedding_size, dtype=int, sep="-")
             m_den = ln_bot[0]
-            train_data, train_ld = dp.make_random_data_and_loader(self.args, ln_emb, m_den)
-            nbatches = self.args.num_batches if self.args.num_batches > 0 else len(train_ld)
+            self.train_data, self.train_ld = dp.make_random_data_and_loader(self.args, ln_emb, m_den)
+            nbatches = self.args.num_batches if self.args.num_batches > 0 else len(self.train_ld)
 
         ### parse command line arguments ###
         m_spa = self.args.arch_sparse_feature_size
@@ -737,7 +737,7 @@ class DLRM_Model(object):
             print(ln_emb)
 
             print("data (inputs and targets):")
-            for j, (X, lS_o, lS_i, T) in enumerate(train_ld):
+            for j, (X, lS_o, lS_i, T) in enumerate(self.train_ld):
                 # early exit if nbatches was set by the user and has been exceeded
                 if nbatches > 0 and j >= nbatches:
                     break
@@ -937,7 +937,7 @@ class DLRM_Model(object):
                 if self.args.mlperf_logging:
                     previous_iteration_time = None
 
-                for j, (X, lS_o, lS_i, T) in enumerate(train_ld):
+                for j, (X, lS_o, lS_i, T) in enumerate(self.train_ld):
                     if j == 0 and self.args.save_onnx:
                         (X_onnx, lS_o_onnx, lS_i_onnx) = (X, lS_o, lS_i)
 
@@ -1056,7 +1056,7 @@ class DLRM_Model(object):
                             scores = []
                             targets = []
 
-                        for i, (X_test, lS_o_test, lS_i_test, T_test) in enumerate(test_ld):
+                        for i, (X_test, lS_o_test, lS_i_test, T_test) in enumerate(self.test_ld):
                             # early exit if nbatches was set by the user and was exceeded
                             if nbatches > 0 and i >= nbatches:
                                 break
@@ -1120,7 +1120,11 @@ class DLRM_Model(object):
                                 'pre_curve' : sklearn.metrics.precision_recall_curve,
                                 'roc_curve' : sklearn.metrics.roc_curve,
                                 # PBV new/added based on results from pre_curve
-                                'pre_auc' : sklearn.metrics.auc,
+                                'pre_auc' : lambda y_true, y_score:
+                                sklearn.metrics.auc(
+                                    x=sklearn.metrics.precision_recall_curve(y_true, y_score)[1], # Recall is x
+                                    y=sklearn.metrics.precision_recall_curve(y_true, y_score)[0]  # Precision is y
+                                ),
                                 # PBV new/added
                                 'classification_report': lambda y_true, y_score:
                                 sklearn.metrics.classification_report(
@@ -1147,16 +1151,10 @@ class DLRM_Model(object):
                                     if metric_name not in ['classification_report', 'confusion_matrix']:
                                         print(", ", end="")
                                 metric_compute_start = time_wrap(False)
-                                if metric_name == 'pre_auc':
-                                    validation_results[metric_name] = metric_function(
-                                        validation_results['pre_curve'][1],
-                                        validation_results['pre_curve'][0]
-                                    )
-                                else:
-                                    validation_results[metric_name] = metric_function(
-                                        targets,
-                                        scores
-                                    )
+                                validation_results[metric_name] = metric_function(
+                                    targets,
+                                    scores
+                                )
                                 metric_compute_end = time_wrap(False)
                                 met_time = metric_compute_end - metric_compute_start
                                 if metric_name not in ['classification_report', 'confusion_matrix']:
@@ -1215,6 +1213,10 @@ class DLRM_Model(object):
                                 + " auc {:.4f}, best auc {:.4f},".format(
                                     validation_results['roc_auc'],
                                     best_auc_test
+                                )
+                                + " pre_auc {:.4f}, best pre_auc {:.4f},".format(
+                                    validation_results['pre_auc'],
+                                    best_pre_auc_test
                                 )
                                 + " accuracy {:3.3f} %, best accuracy {:3.3f} %".format(
                                     validation_results['accuracy'] * 100,
@@ -1300,3 +1302,4 @@ class DLRM_Model(object):
         for key in keys_keep:
             final_results[key] = validation_results[key]
         return final_results
+

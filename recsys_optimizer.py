@@ -11,6 +11,7 @@ neptune.init(api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFw
 neptune.create_experiment('optuna-sweep')
 neptune_callback = optuna_utils.NeptuneCallback()
 
+
 def objective(trial):
 
     # Suggest values of the hyperparameters using a trial object.
@@ -38,15 +39,15 @@ def objective(trial):
     arch_mlp_top = '-'.join(str(x) for x in top_layers)
     #loss_function = trial.suggest_categorical('loss_function', ['mse', 'bce'])
     learning_rate = trial.suggest_float('learning_rate', 0.001, 0.1)
-    print('MLP bot', arch_mlp_bot)
-    print('MLP top', arch_mlp_top)
+    #print('MLP bot', arch_mlp_bot)
+    #print('MLP top', arch_mlp_top)
     dlrm_model = DLRM_Model(
         arch_sparse_feature_size=arch_sparse_feature_size, #16,
         arch_mlp_bot=arch_mlp_bot, #'13-512-256-64-16',
         arch_mlp_top=arch_mlp_top, #'512-256-1',
         data_generation='dataset',
         data_set='kaggle',
-        raw_data_file='./input/trainday0day0.txt',
+        raw_data_file='./input/trainday0day0day0day0.txt',
         #processed_data_file='./input/kaggleAdDisplayChallenge_processed.npz',
         loss_function='bce', #loss_function,
         round_targets=True,
@@ -58,9 +59,10 @@ def objective(trial):
         print_time=True,
         test_mini_batch_size=256,
         test_num_workers=16
+        #save_model = 'dlrm_criteo_kaggle_.pytorch'
+        # use_gpu=True
         # enable_profiling=True,
         # plot_compute_graph=True,
-        # save_model='dlrm_criteo_kaggle.pytorch'
     )
     validation_results = dlrm_model.run()
     for key in validation_results:
@@ -69,9 +71,11 @@ def objective(trial):
     return validation_results['best_pre_auc_test'] # ['best_auc_test']  #
 
 
-study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=100, callbacks=[neptune_callback])
-optuna_utils.log_study(study)
+if __name__ == "__main__":
+
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective, n_trials=2, callbacks=[neptune_callback])
+    optuna_utils.log_study(study)
 
 
 # See sample available options for optimising hyper-parameters

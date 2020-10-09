@@ -68,42 +68,19 @@ echo "run pytorch ..."
 #--test-num-workers=16 \
 #--save-model=dlrm_criteo_kaggle.pytorch \
 #$dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
-python dlrm_s_pytorch.py \
---arch-sparse-feature-size=16 \
---arch-mlp-bot="13-512-256-64-16" \
---arch-mlp-top="512-256-1" \
---data-generation=dataset \
---data-set=kaggle \
---raw-data-file=./input/trainday0day0day0day0.txt \
---processed-data-file=./input/kaggleAdDisplayChallenge_processed3.npz \
---loss-function=bce \
---round-targets=True \
---learning-rate=0.1 \
---mini-batch-size=32 \
---use-gpu \
---print-freq=64 \
---test-freq=64 \
---enable-profiling \
---mlperf-logging \
---plot-compute-graph \
---print-time \
---test-mini-batch-size=32 \
---test-num-workers=16 \
---save-model=dlrm_criteo_kaggle.pytorch \
-$dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
-
 #python dlrm_s_pytorch.py \
-#--arch-sparse-feature-size=18 \
-#--arch-mlp-bot="13-143-411-18" \
-#--arch-mlp-top="296-1" \
+#--arch-sparse-feature-size=16 \
+#--arch-mlp-bot="13-512-256-64-16" \
+#--arch-mlp-top="512-256-1" \
 #--data-generation=dataset \
 #--data-set=kaggle \
 #--raw-data-file=./input/trainday0day0day0day0.txt \
 #--processed-data-file=./input/kaggleAdDisplayChallenge_processed3.npz \
 #--loss-function=bce \
 #--round-targets=True \
-#--learning-rate=0.09999214850893416 \
+#--learning-rate=0.1 \
 #--mini-batch-size=32 \
+#--use-gpu \
 #--print-freq=64 \
 #--test-freq=64 \
 #--enable-profiling \
@@ -114,6 +91,27 @@ $dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
 #--test-num-workers=16 \
 #--save-model=dlrm_criteo_kaggle.pytorch \
 #$dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
+python dlrm_s_pytorch.py \
+--arch-sparse-feature-size=18 \
+--arch-mlp-bot="13-143-411-18" \
+--arch-mlp-top="296-1" \
+--data-generation=dataset \
+--data-set=kaggle \
+--raw-data-file=./input/trainday0day0day0day0.txt \
+--loss-function=bce \
+--round-targets=True \
+--learning-rate=0.09999214850893416 \
+--mini-batch-size=32 \
+--print-freq=64 \
+--test-freq=64 \
+--enable-profiling \
+--mlperf-logging \
+--plot-compute-graph \
+--print-time \
+--test-mini-batch-size=32 \
+--test-num-workers=16 \
+--save-model=dlrm_criteo_kaggle.pytorch \
+$dlrm_extra_option 2>&1 | tee run_kaggle_pt.log
 
 
 #echo "run caffe2 ..."

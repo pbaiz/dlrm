@@ -5,6 +5,7 @@ import sys
 import neptunecontrib.monitoring.optuna as optuna_utils
 from dlrm_s_pytorch_class import DLRM_Model
 
+RUN_TAG = 'Local_Date'
 
 class RecsysOptimeyez():
 
@@ -14,7 +15,7 @@ class RecsysOptimeyez():
                  bucketname='local', #BUCKET_NAME_LOCAL,
                  max_evals=100,
                  neptune_tags=['local'],
-                 run_tag = None,
+                 run_tag = RUN_TAG, #None,
                  API_KEY = None, #NEPTUNE_API_KEY,
                  model_name = 'model_all',
                  trial_size=20,
@@ -162,6 +163,7 @@ class RecsysOptimeyez():
         optuna_utils.log_study(study)
         best_params = self.rebuild_mlps(params, study.best_params)
 
+        print('finished find_best_params... ', best_params)
         return best_params
 
 

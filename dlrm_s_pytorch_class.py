@@ -516,10 +516,10 @@ class DLRM_Model(object):
             "--data-generation", type=str, default="random"
         )  # synthetic or dataset
         parser.add_argument("--data-trace-file", type=str, default="./input/dist_emb_j.log")
-        parser.add_argument("--data-set", type=str, default="kaggle")  # or terabyte
+        parser.add_argument("--data-set", type=str, default="normal")  # or large
         parser.add_argument("--raw-data-file", type=str, default="")
         parser.add_argument("--processed-data-file", type=str, default="")
-        parser.add_argument("--data-randomize", type=str, default="total")  # or day or none
+        parser.add_argument("--data-randomize", type=str, default="total")  # or split or none
         parser.add_argument("--data-trace-enable-padding", type=bool, default=False)
         parser.add_argument("--max-ind-range", type=int, default=-1)
         parser.add_argument("--data-sub-sample-rate", type=float, default=0.0)  # in [0, 1]
@@ -551,7 +551,9 @@ class DLRM_Model(object):
         parser.add_argument("--plot-compute-graph", action="store_true", default=False)
         # store/load model
         parser.add_argument("--save-model", type=str, default="")
+        parser.add_argument("--save-model-onnx", type=str, default="")
         parser.add_argument("--load-model", type=str, default="")
+        parser.add_argument("--load-model-onnx", type=str, default="")
         # mlperf logging (disables other output and stops early)
         parser.add_argument("--mlperf-logging", action="store_true", default=False) #PBV False) True
         # stop at target accuracy Kaggle 0.789, Terabyte (sub-sampled=0.875) 0.8107
@@ -1288,8 +1290,8 @@ class DLRM_Model(object):
             onnx.checker.check_model(dlrm_pytorch_onnx)
 
         # export the model in onnx
-        if self.args.save_model:
-            torch.save(dlrm, self.args.save_model)
+        if self.args.save_model_onnx:
+            torch.save(dlrm, self.args.save_model_onnx)
             #torch.save(dlrm.state_dict(), self.args.save_model)
 
         # Return last results dict
@@ -1303,3 +1305,31 @@ class DLRM_Model(object):
             final_results[key] = validation_results[key]
         return final_results
 
+    def infer(self, input_data):
+
+        # Confirming we are only performing inference
+        if not self.args.inference_only:
+            sys.exit("ERROR: argument inference_only should be selected as True for this action to work")
+
+        if self.args.load_model_onnx == "":
+            sys.exit("ERROR: argument load_model should have the model to load")
+
+        dlrm_infer = torch.load(self.args.load_model_onnx)
+        #print(dlrm_infer.eval())
+        # Load all the TEST data to Evaluate
+        #total_samples = len(input_data)
+        #args.test_mini_batch_size = total_samples
+        # total_samples = len(train_data) # Kills the Computer
+        # args.mini_batch_size = total_samples
+        #train_data2, train_ld2, test_data2, test_ld2 = dp.make_fazwaz_data_and_loaders(args)
+        #self.train_data, self.train_ld, self.test_data, self.test_ld = \
+        #    dp.make_criteo_data_and_loaders(self.args)
+
+        # Input data for DLRM model consist of:
+        # - Tensor of Dense Features (giving X). This uses the bottom layer (bot_l)
+        # - Sparse features (using embeddings): lS_o, lS_i (giving ly). This uses the embedding later (emb_l)
+        # - Interaction features (dense and sparse). This combines X with ly.
+        #for j, (X, lS_o, lS_i, T) in enumerate(test_ld2):
+        #y_pred = dlrm_infer(X, lS_o, lS_i)
+
+        return 0

@@ -12,7 +12,7 @@
 #     https://labs.criteo.com/2013/12/download-terabyte-click-logs
 #
 # After downloading dataset, run:
-#   getCriteoAdData(
+#   getNormalData(
 #       datafile="<path-to-train.txt>",
 #       o_filename=kaggleAdDisplayChallenge_processed.npz,
 #       max_ind_range=-1,
@@ -23,7 +23,7 @@
 #       criteo_kaggle=True,
 #       memory_map=False
 #   )
-#   getCriteoAdData(
+#   getNormalData(
 #       datafile="<path-to-split_{0,...,23}>",
 #       o_filename=terabyte_processed.npz,
 #       max_ind_range=-1,
@@ -142,7 +142,9 @@ def processCriteoAdData(d_path, d_file, npzfile, split, convertDicts, pre_comp_c
                 '''
                 # Approach 2a: using pre-computed dictionaries
                 X_cat_t = np.zeros(data["X_cat_t"].shape)
-                for j in range(26):
+                # PBV for j in range(26):
+                #for j in range(args.spa_fea):
+                for j in range(X_cat_t.shape[0]):
                     for k, x in enumerate(data["X_cat_t"][j, :]):
                         X_cat_t[j, k] = convertDicts[j][x]
                 # continuous features
@@ -175,6 +177,8 @@ def concatCriteoAdData(
         npzfile,
         trafile,
         n_data_split,
+        den_fea,
+        spa_fea,
         data_split,
         randomize,
         total_per_file,
@@ -195,8 +199,8 @@ def concatCriteoAdData(
     if memory_map:
         # dataset break up per fea
         # tar_fea = 1   # single target
-        den_fea = 13  # 13 dense  features
-        spa_fea = 26  # 26 sparse features
+        #den_fea = 13  # 13 dense  features
+        #spa_fea = 26  # 26 sparse features
         # tad_fea = tar_fea + den_fea
         # tot_fea = tad_fea + spa_fea
         # create offset per file
@@ -874,17 +878,21 @@ def transformCriteoAdData(X_cat, X_int, y, n_data_split, data_split, randomize, 
         return (X_cat, X_int, y, [], [], [], [], [], [])
 
 
-def getCriteoAdData(
+def getNormalData(
         datafile,
         o_filename,
         max_ind_range=-1,
         sub_sample_rate=0.0,
-        n_data_split=7,
+        n_data_split=0,     # To ensure it is assigned or gives error
+        tar_fea=0,          # To ensure it is assigned or gives error
+        den_fea=0,          # To ensure it is assigned or gives error
+        spa_fea=0,          # To ensure it is assigned or gives error
         data_split='train',
         randomize='total',
-        criteo_kaggle=True,
+        criteo_kaggle=True,  # criteo_kaggle
         memory_map=False
 ):
+
     # Passes through entire dataset and defines dictionaries for categorical
     # features and determines the number of total categories.
     #
@@ -914,8 +922,8 @@ def getCriteoAdData(
         total_per_file = []
         if criteo_kaggle:
             # WARNING: The raw data consists of a single train.txt file
-            # Each line in the file is a sample, consisting of 13 continuous and
-            # 26 categorical features (an extra space indicates that feature is
+            # Each line in the file is a sample, consisting of 'den_fea' continuous and
+            # 'spa_fea' categorical features (an extra space indicates that feature is
             # missing and will be interpreted as 0).
             if path.exists(datafile):
                 print("Reading data from path=%s" % (datafile))
@@ -969,11 +977,16 @@ def getCriteoAdData(
             npzfile,
             split,
             num_data_in_split,
+            tar_fea,
+            den_fea,
+            spa_fea
     ):
         with open(str(datfile)) as f:
             y = np.zeros(num_data_in_split, dtype="i4")  # 4 byte int
-            X_int = np.zeros((num_data_in_split, 13), dtype="i4")  # 4 byte int
-            X_cat = np.zeros((num_data_in_split, 26), dtype="i4")  # 4 byte int
+            # PBV X_int = np.zeros((num_data_in_split, 13), dtype="i4")  # 4 byte int
+            # PBV X_cat = np.zeros((num_data_in_split, 26), dtype="i4")  # 4 byte int
+            X_int = np.zeros((num_data_in_split, den_fea), dtype="i4")  # 4 byte int
+            X_cat = np.zeros((num_data_in_split, spa_fea), dtype="i4")  # 4 byte int
             if sub_sample_rate == 0.0:
                 rand_u = 1.0
             else:
@@ -994,19 +1007,23 @@ def getCriteoAdData(
                     continue
 
                 y[i] = target
-                X_int[i] = np.array(line[1:14], dtype=np.int32)
+                # PBV X_int[i] = np.array(line[1:14], dtype=np.int32)
+                X_int[i] = np.array(line[1:(tar_fea + den_fea)], dtype=np.int32)
                 if max_ind_range > 0:
                     X_cat[i] = np.array(
-                        list(map(lambda x: int(x, 16) % max_ind_range, line[14:])),
+                        # PBV list(map(lambda x: int(x, 16) % max_ind_range, line[14:])),
+                        list(map(lambda x: int(x, 16) % max_ind_range, line[(tar_fea + args.den_fea):])),
                         dtype=np.int32
                     )
                 else:
                     X_cat[i] = np.array(
-                        list(map(lambda x: int(x, 16), line[14:])),
+                        # PBV list(map(lambda x: int(x, 16), line[14:])),
+                        list(map(lambda x: int(x, 16), line[(tar_fea + den_fea):])),
                         dtype=np.int32
                     )
                 # count uniques
-                for j in range(26):
+                # PBV for j in range(26):
+                for j in range(spa_fea):
                     convertDicts[j][X_cat[i][j]] = 1
 
                 # debug prints
@@ -1046,7 +1063,8 @@ def getCriteoAdData(
 
     # create all splits (reuse existing files if possible)
     recreate_flag = False
-    convertDicts = [{} for _ in range(26)]
+    # PBV convertDicts = [{} for _ in range(26)]
+    convertDicts = [{} for _ in range(spa_fea)]
     # WARNING: to get reproducable sub-sampling results you must reset the seed below
     # np.random.seed(123)
     # in this case there is a single split in each split
@@ -1065,6 +1083,9 @@ def getCriteoAdData(
                 npzfile,
                 i,
                 total_per_file[i],
+                tar_fea,
+                den_fea,
+                spa_fea
             )
 
     # report and save total into a file
@@ -1075,10 +1096,12 @@ def getCriteoAdData(
     print("Divided into n_data_split/splits:\n", total_per_file)
 
     # dictionary files
-    counts = np.zeros(26, dtype=np.int32)
+    # PBV counts = np.zeros(26, dtype=np.int32)
+    counts = np.zeros(spa_fea, dtype=np.int32)
     if recreate_flag:
         # create dictionaries
-        for j in range(26):
+        # PBV for j in range(26):
+        for j in range(spa_fea):
             for i, x in enumerate(convertDicts[j]):
                 convertDicts[j][x] = i
             dict_file_j = d_path + d_file + "_fea_dict_{0}.npz".format(j)
@@ -1094,7 +1117,8 @@ def getCriteoAdData(
             np.savez_compressed(count_file, counts=counts)
     else:
         # create dictionaries (from existing files)
-        for j in range(26):
+        # PBV for j in range(26):
+        for j in range(spa_fea):
             with np.load(d_path + d_file + "_fea_dict_{0}.npz".format(j)) as data:
                 unique = data["unique"]
             for i, x in enumerate(unique):
@@ -1111,6 +1135,8 @@ def getCriteoAdData(
         npzfile,
         trafile,
         n_data_split,
+        den_fea,
+        spa_fea,
         data_split,
         randomize,
         total_per_file,
@@ -1128,6 +1154,9 @@ def loadDataset(
         sub_sample_rate,
         randomize,
         n_data_split,
+        tar_fea,
+        den_fea,
+        spa_fea,
         data_split,
         raw_path="",
         pro_data="",
@@ -1168,12 +1197,15 @@ def loadDataset(
         file = str(pro_data)
     else:
         print("Reading raw data=%s" % (str(raw_path)))
-        file = getCriteoAdData(
+        file = getNormalData(
             raw_path,
             o_filename,
             max_ind_range,
             sub_sample_rate,
             n_data_split,
+            tar_fea,
+            den_fea,
+            spa_fea,
             data_split,
             randomize,
             dataset == "normal",
@@ -1199,6 +1231,12 @@ if __name__ == "__main__":
     parser.add_argument("--data-set", type=str, default="normal")  # or large
     parser.add_argument("--raw-data-file", type=str, default="")
     parser.add_argument("--processed-data-file", type=str, default="")
+    # New Ones
+    parser.add_argument("--n-data-split", type=int, default=7)
+    parser.add_argument("--tar-fea", type=int, default=1)
+    parser.add_argument("--den-fea", type=int, default=13)  # 13 dense  features (numerical)
+    parser.add_argument("--spa-fea", type=int, default=26)  # 26 sparse features (categorical)
+
     args = parser.parse_args()
 
     loadDataset(
@@ -1206,6 +1244,10 @@ if __name__ == "__main__":
         args.max_ind_range,
         args.data_sub_sample_rate,
         args.data_randomize,
+        args.n_data_split,
+        args.tar_fea,
+        args.den_fea,
+        args.spa_fea,
         "train",
         args.raw_data_file,
         args.processed_data_file,

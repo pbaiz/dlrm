@@ -195,12 +195,19 @@ def _test():
 class CriteoBinDataset(Dataset):
     """Binary version of criteo dataset."""
 
-    def __init__(self, data_file, counts_file,
-                 batch_size=1, max_ind_range=-1, bytes_per_feature=4):
+    def __init__(self,
+                 data_file,
+                 counts_file,
+                 tar_fea,
+                 den_fea,
+                 spa_fea,
+                 batch_size=1,
+                 max_ind_range=-1,
+                 bytes_per_feature=4):
         # dataset
-        self.tar_fea = 1   # single target
-        self.den_fea = 13  # 13 dense  features
-        self.spa_fea = 26  # 26 sparse features
+        self.tar_fea = tar_fea  #1   # single target
+        self.den_fea = den_fea  #13  # 13 dense  features
+        self.spa_fea = spa_fea  #26  # 26 sparse features
         self.tad_fea = self.tar_fea + self.den_fea
         self.tot_fea = self.tad_fea + self.spa_fea
 
@@ -279,7 +286,7 @@ def _preprocess(args):
     train_files = ['{}_{}_reordered.npz'.format(args.input_data_prefix, split) for
                    split in range(0, n_data_split)]
 
-    test_valid_file = args.input_data_prefix + '_23_reordered.npz'
+    test_valid_file = args.input_data_prefix + '_' + str(n_data_split) + '_reordered.npz'
 
     os.makedirs(args.output_directory, exist_ok=True)
     for split in ['train', 'val', 'test']:
@@ -300,6 +307,10 @@ def _test_bin():
     parser.add_argument('--input_data_prefix', required=True)
     parser.add_argument('--split', choices=['train', 'test', 'val'],
                         required=True)
+    parser.add_argument("--tar-fea", type=int, default=1)
+    parser.add_argument("--den-fea", type=int, default=13)  # 13 dense  features (numerical)
+    parser.add_argument("--spa-fea", type=int, default=26)  # 26 sparse features (categorical)
+
     args = parser.parse_args()
 
     # _preprocess(args)
@@ -309,9 +320,12 @@ def _test_bin():
 
     counts_file = os.path.join(args.output_directory, 'split_fea_count.npz')
     dataset_binary = CriteoBinDataset(data_file=binary_data_file,
-                                            counts_file=counts_file,
-                                            batch_size=2048,)
-    from dlrm_data_pytorch import CriteoDataset, collate_wrapper_criteo
+                                      counts_file=counts_file,
+                                      tar_fea=args.tar_fea,
+                                      den_fea=args.den_fea,
+                                      spa_fea=args.spa_fea,
+                                      batch_size=2048,)
+    from dlrm_data_pytorch_class import NormalDataset, collate_wrapper_normal
 
     binary_loader = torch.utils.data.DataLoader(
         dataset_binary,
@@ -323,11 +337,15 @@ def _test_bin():
         drop_last=False,
     )
 
-    original_dataset = CriteoDataset(
-        dataset='terabyte',
+    original_dataset = NormalDataset(
+        dataset='large',
         max_ind_range=10 * 1000 * 1000,
         sub_sample_rate=1,
         randomize=True,
+        tar_fea=1,
+        den_fea=13,
+        spa_fea=26,
+        n_data_split=7,
         split=args.split,
         raw_path=args.input_data_prefix,
         pro_data='dummy_string',
@@ -339,7 +357,7 @@ def _test_bin():
         batch_size=2048,
         shuffle=False,
         num_workers=0,
-        collate_fn=collate_wrapper_criteo,
+        collate_fn=collate_wrapper_normal,
         pin_memory=False,
         drop_last=False,
     )

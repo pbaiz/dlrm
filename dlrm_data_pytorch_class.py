@@ -44,7 +44,7 @@ import data_loader_terabyte_class
 #            "split": randomizes each split"s data (only works if split = True)
 #            "total": randomizes total dataset
 # split (bool) : to split into train, test, validation data-sets
-class CriteoDataset(Dataset):
+class NormalDataset(Dataset):
 
     def __init__(
             self,
@@ -52,42 +52,46 @@ class CriteoDataset(Dataset):
             max_ind_range,
             sub_sample_rate,
             randomize,
+            tar_fea,
             den_fea,
+            spa_fea,
             n_data_split,
             split="train",
             raw_path="",
             pro_data="",
-            memory_map=False,
-            out_file=""
+            memory_map=False
     ):
-        self.dataset=dataset,
-        self.max_ind_range=max_ind_range,
-        self.sub_sample_rate=sub_sample_rate,
-        self.randomize=randomize,
-        self.split=split,
-        self.raw_path=raw_path,
-        self.pro_data=pro_data,
-        self.memory_map=memory_map,
-        self.out_file=out_file,
-        self.n_data_split=n_data_split
+        self.dataset=dataset
+        self.max_ind_range=max_ind_range
+        self.sub_sample_rate=sub_sample_rate
+        self.randomize=randomize
+        self.split=split
+        self.raw_path=raw_path
+        self.pro_data=pro_data
+        self.memory_map=memory_map
+        if tar_fea:
+            self.tar_fea = tar_fea
+        else:
+            sys.exit("ERROR: argument 'tar_fea' should be specified")
         if den_fea:
             self.den_fea = den_fea
         else:
-            sys.exit(
-                "ERROR: argument 'den_fea' should be specified"
-            )
+            sys.exit("ERROR: argument 'den_fea' should be specified")
+        if spa_fea:
+            self.spa_fea = spa_fea
+        else:
+            sys.exit("ERROR: argument 'spa_fea' should be specified")
         # dataset
         # tar_fea = 1   # single target
         # den_fea = 13  # 13 dense  features (numerical)
         # spa_fea = 26  # 26 sparse features (categorical)
         # tad_fea = tar_fea + den_fea
         # tot_fea = tad_fea + spa_fea
-        if n_data_split > 0:
+        if (n_data_split) > 4 and (n_data_split < 24):
             self.n_data_split = n_data_split
         else:
-            sys.exit(
-                "ERROR: argument 'n_data_split' should be greater than 0 (e.g. 7, 24)"
-            )
+            sys.exit("ERROR: argument 'n_data_split' should be between 4 and 24")
+        out_file = self.dataset + "_processed"
 
         # split the datafile into path and filename
         lstr = raw_path.split("/")
@@ -118,12 +122,15 @@ class CriteoDataset(Dataset):
             file = str(pro_data)
         else:
             print("Reading raw data=%s" % (str(raw_path)))
-            file = data_utils_class.getCriteoAdData(
+            file = data_utils_class.getNormalData(
                 raw_path,
                 out_file,
                 max_ind_range,
                 sub_sample_rate,
                 self.n_data_split,
+                self.tar_fea,
+                self.den_fea,
+                self.spa_fea,
                 split,
                 randomize,
                 dataset == "normal",
@@ -300,7 +307,7 @@ class CriteoDataset(Dataset):
             return len(self.y)
 
 
-def collate_wrapper_criteo(list_of_tuples):
+def collate_wrapper_normal(list_of_tuples):
     # where each tuple is (X_int, X_cat, y)
     transposed_data = list(zip(*list_of_tuples))
     X_int = torch.log(torch.tensor(transposed_data[0], dtype=torch.float) + 1)
@@ -317,22 +324,30 @@ def collate_wrapper_criteo(list_of_tuples):
 
 
 def ensure_dataset_preprocessed(args, d_path):
-    _ = CriteoDataset(
+    _ = NormalDataset(
         args.data_set,
         args.max_ind_range,
         args.data_sub_sample_rate,
         args.data_randomize,
+        args.tar_fea,
+        args.den_fea,
+        args.spa_fea,
+        args.n_data_split,
         "train",
         args.raw_data_file,
         args.processed_data_file,
         args.memory_map
     )
 
-    _ = CriteoDataset(
+    _ = NormalDataset(
         args.data_set,
         args.max_ind_range,
         args.data_sub_sample_rate,
         args.data_randomize,
+        args.tar_fea,
+        args.den_fea,
+        args.spa_fea,
+        args.n_data_split,
         "test",
         args.raw_data_file,
         args.processed_data_file,
@@ -344,9 +359,9 @@ def ensure_dataset_preprocessed(args, d_path):
 
         train_files = ['{}_{}_reordered.npz'.format(args.raw_data_file, split)
                        for
-                       split in range(0, 23)]
+                       split in range(0, args.n_data_split)]
 
-        test_valid_file = args.raw_data_file + '_23_reordered.npz'
+        test_valid_file = args.raw_data_file + '_' + str(args.n_data_split) + '_reordered.npz'
 
         output_file = d_path + '_{}.bin'.format(split)
 
@@ -356,9 +371,9 @@ def ensure_dataset_preprocessed(args, d_path):
                                                    split=split)
 
 
-def make_criteo_data_and_loaders(args):
+def make_normal_data_and_loaders(args):
 
-    if args.mlperf_logging and args.memory_map and args.data_set == "terabyte":
+    if args.mlperf_logging and args.memory_map and args.data_set == "large":
         # more efficient for larger batches
         data_directory = path.dirname(args.raw_data_file)
 
@@ -378,6 +393,9 @@ def make_criteo_data_and_loaders(args):
             train_data = data_loader_terabyte_class.CriteoBinDataset(
                 data_file=train_file,
                 counts_file=counts_file,
+                tar_fea=args.tar_fea,
+                den_fea=args.den_fea,
+                spa_fea=args.spa_fea,
                 batch_size=args.mini_batch_size,
                 max_ind_range=args.max_ind_range
             )
@@ -397,6 +415,9 @@ def make_criteo_data_and_loaders(args):
             test_data = data_loader_terabyte_class.CriteoBinDataset(
                 data_file=test_file,
                 counts_file=counts_file,
+                tar_fea=args.tar_fea,
+                den_fea=args.den_fea,
+                spa_fea=args.spa_fea,
                 batch_size=args.test_mini_batch_size,
                 max_ind_range=args.max_ind_range
             )
@@ -414,22 +435,30 @@ def make_criteo_data_and_loaders(args):
         else:
             data_filename = args.raw_data_file.split("/")[-1]
 
-            train_data = CriteoDataset(
+            train_data = NormalDataset(
                 args.data_set,
                 args.max_ind_range,
                 args.data_sub_sample_rate,
                 args.data_randomize,
+                args.tar_fea,
+                args.den_fea,
+                args.spa_fea,
+                args.n_data_split,
                 "train",
                 args.raw_data_file,
                 args.processed_data_file,
                 args.memory_map
             )
 
-            test_data = CriteoDataset(
+            test_data = NormalDataset(
                 args.data_set,
                 args.max_ind_range,
                 args.data_sub_sample_rate,
                 args.data_randomize,
+                args.tar_fea,
+                args.den_fea,
+                args.spa_fea,
+                args.n_data_split,
                 "test",
                 args.raw_data_file,
                 args.processed_data_file,
@@ -439,7 +468,7 @@ def make_criteo_data_and_loaders(args):
             train_loader = data_loader_terabyte_class.DataLoader(
                 data_directory=data_directory,
                 data_filename=data_filename,
-                n_data_split=list(range(n_data_split)),
+                n_data_split=list(range(args.n_data_split)),
                 batch_size=args.mini_batch_size,
                 max_ind_range=args.max_ind_range,
                 split="train"
@@ -448,28 +477,36 @@ def make_criteo_data_and_loaders(args):
             test_loader = data_loader_terabyte_class.DataLoader(
                 data_directory=data_directory,
                 data_filename=data_filename,
-                n_data_split=[n_data_split],
+                n_data_split=[args.n_data_split],
                 batch_size=args.test_mini_batch_size,
                 max_ind_range=args.max_ind_range,
                 split="test"
             )
     else:
-        train_data = CriteoDataset(
+        train_data = NormalDataset(
             args.data_set,
             args.max_ind_range,
             args.data_sub_sample_rate,
             args.data_randomize,
+            args.tar_fea,
+            args.den_fea,
+            args.spa_fea,
+            args.n_data_split,
             "train",
             args.raw_data_file,
             args.processed_data_file,
             args.memory_map
         )
 
-        test_data = CriteoDataset(
+        test_data = NormalDataset(
             args.data_set,
             args.max_ind_range,
             args.data_sub_sample_rate,
             args.data_randomize,
+            args.tar_fea,
+            args.den_fea,
+            args.spa_fea,
+            args.n_data_split,
             "test",
             args.raw_data_file,
             args.processed_data_file,
@@ -481,7 +518,7 @@ def make_criteo_data_and_loaders(args):
             batch_size=args.mini_batch_size,
             shuffle=False,
             num_workers=args.num_workers,
-            collate_fn=collate_wrapper_criteo,
+            collate_fn=collate_wrapper_normal,
             pin_memory=False,
             drop_last=False,  # True
         )
@@ -491,7 +528,7 @@ def make_criteo_data_and_loaders(args):
             batch_size=args.test_mini_batch_size,
             shuffle=False,
             num_workers=args.test_num_workers,
-            collate_fn=collate_wrapper_criteo,
+            collate_fn=collate_wrapper_normal,
             pin_memory=False,
             drop_last=False,  # True
         )

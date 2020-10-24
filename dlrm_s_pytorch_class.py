@@ -61,7 +61,7 @@ import functools
 import time
 import json
 # data generation
-import dlrm_data_pytorch as dp
+import dlrm_data_pytorch_class as dp
 
 # numpy
 import numpy as np
@@ -566,6 +566,14 @@ class DLRM_Model(object):
         parser.add_argument("--lr-num-warmup-steps", type=int, default=0)
         parser.add_argument("--lr-decay-start-step", type=int, default=0)
         parser.add_argument("--lr-num-decay-steps", type=int, default=0)
+        # Data Split, this drives the split between train/test datasets (last split is used for testing). The larger the
+        # dataset, the larger this number can be, original DLRM split data between 7 and 24 (terabyte size)
+        parser.add_argument("--n-data-split", type=int, default=7)
+        # Number of Numerical/Dense Features: y / den-fea / cat-fea
+        parser.add_argument("--tar-fea", type=int, default=1)
+        parser.add_argument("--den-fea", type=int, default=13)  # 13 dense  features (numerical)
+        parser.add_argument("--spa-fea", type=int, default=26)  # 26 sparse features (categorical)
+
         self.args = parser.parse_args()
 
         # Overides any default value passed in kwargs
@@ -614,7 +622,7 @@ class DLRM_Model(object):
         if (self.args.data_generation == "dataset"):
 
             self.train_data, self.train_ld, self.test_data, self.test_ld = \
-                dp.make_criteo_data_and_loaders(self.args)
+                dp.make_normal_data_and_loaders(self.args)
             nbatches = self.args.num_batches if self.args.num_batches > 0 else len(self.train_ld)
             nbatches_test = len(self.test_ld)
 
@@ -1031,6 +1039,7 @@ class DLRM_Model(object):
                         total_loss = 0
 
                         str_run_type = "inference" if self.args.inference_only else "training"
+                        # PBV This is standard output
                         print(
                             "Finished {} it {}/{} of epoch {}, {:.2f} ms/it, ".format(
                                 str_run_type, j + 1, nbatches, k, gT
@@ -1323,7 +1332,7 @@ class DLRM_Model(object):
         # args.mini_batch_size = total_samples
         #train_data2, train_ld2, test_data2, test_ld2 = dp.make_fazwaz_data_and_loaders(args)
         #self.train_data, self.train_ld, self.test_data, self.test_ld = \
-        #    dp.make_criteo_data_and_loaders(self.args)
+        #    dp.make_normal_data_and_loaders(self.args)
 
         # Input data for DLRM model consist of:
         # - Tensor of Dense Features (giving X). This uses the bottom layer (bot_l)

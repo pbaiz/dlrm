@@ -136,12 +136,32 @@ class RecsysOptimeyez():
             return validation_results['best_pre_auc_test'] # ['best_auc_test'] Need to decide which metric is best
 
         # Assigning fixed parameters to params
+        # params = {
+        #     "data_generation": 'dataset',
+        #     "data_set": 'normal', #'kaggle',
+        #
+        #     "raw_data_file": './input/trainday0day0day0day0.txt',
+        #     # "processed_data_file": './input/kaggleAdDisplayChallenge_processed.npz',
+        #     "loss_function": 'bce',  # loss_function,
+        #     #"round_targets": True,  We want to have a ranked list instead of yes/no
+        #     "mini_batch_size": 32,  # 128,
+        #     "print_freq": 32,  # 256,
+        #     "test_freq": 32,  # 128,
+        #     "mlperf_logging": True,
+        #     "print_time": True,
+        #     "test_mini_batch_size": 32,  # 256,
+        #     # "test_num_workers": 16
+        #     # "save_model ":  'dlrm_criteo_kaggle_.pytorch'
+        #     # "use_gpu": True
+        #     # "enable_profiling": True,
+        #     # "plot_compute_graph": True,
+        # }
         params = {
             "data_generation": 'dataset',
-            "data_set": 'kaggle',
-            "raw_data_file": './input/trainday0day0day0day0.txt',
+            "data_set": 'normal',
+            "raw_data_file": './input/recsys_users.txt',
             # "processed_data_file": './input/kaggleAdDisplayChallenge_processed.npz',
-            "loss_function": 'bce',  # loss_function,
+            "loss_function": 'wbce',  # loss_function,
             #"round_targets": True,  We want to have a ranked list instead of yes/no
             "mini_batch_size": 32,  # 128,
             "print_freq": 32,  # 256,
@@ -149,12 +169,17 @@ class RecsysOptimeyez():
             "mlperf_logging": True,
             "print_time": True,
             "test_mini_batch_size": 32,  # 256,
+            "loss_weights": '0.0348-0.9652',
+            "tar_fea": 1,  # single target
+            "den_fea": 240,  # 90  # 13 dense  features (numerical)          # PBV Main change between datasets
+            "spa_fea": 35  # 51  # 26 sparse features (categorical)      # PBV Main change between datasets
             # "test_num_workers": 16
             # "save_model ":  'dlrm_criteo_kaggle_.pytorch'
             # "use_gpu": True
             # "enable_profiling": True,
             # "plot_compute_graph": True,
         }
+
         neptune.init('pedrobaiz/dlrm', api_token=self.API_KEY)
         neptune.create_experiment('recsys-' + self.model_name, tags=[str(self.neptune_tags)])
         neptune_callback = optuna_utils.NeptuneCallback()

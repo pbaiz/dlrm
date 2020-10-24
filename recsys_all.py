@@ -10,7 +10,7 @@ RUN_TAG = 'Local_Date'
 def find_best_parameters():
     params = {
         "verbose": True,
-        "max_evals": 2,
+        "max_evals": 3,
         "API_KEY": 'eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiODViMDk1NTktYzM0ZC00MDMwLTgxMzItOTU4YmM3ODkwMjdjIn0=',
         "den_fea": 13
     }
@@ -47,9 +47,9 @@ if __name__ == "__main__":
     with open('best_hyper_params.json', 'w') as f:
         json.dump(best_hyper_params, f)
     # Run larger training with best hyperparams
-    final_results = train_recsys(best_hyper_params)
+    #final_results = train_recsys(best_hyper_params)
     # Load and Run Model for any input
-    with open('best_hyper_params.json', 'r') as f:
-        best_hyper_params = json.load(f)
-    check = evaluate_recsys(best_hyper_params)
+    #with open('best_hyper_params.json', 'r') as f:
+    #    best_hyper_params = json.load(f)
+    #check = evaluate_recsys(best_hyper_params)
     print('All Good')

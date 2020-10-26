@@ -307,6 +307,82 @@ class NormalDataset(Dataset):
             return len(self.y)
 
 
+class NormalDatasetInfer(Dataset):
+
+    def __init__(
+            self,
+            dataset,
+            max_ind_range,
+            sub_sample_rate,
+            randomize,
+            tar_fea,
+            den_fea,
+            spa_fea,
+            df=None
+    ):
+        self.dataset=dataset
+        self.max_ind_range=max_ind_range
+        self.sub_sample_rate=sub_sample_rate
+        self.randomize=randomize
+        if tar_fea:
+            self.tar_fea = tar_fea
+        else:
+            sys.exit("ERROR: argument 'tar_fea' should be specified")
+        if den_fea:
+            self.den_fea = den_fea
+        else:
+            sys.exit("ERROR: argument 'den_fea' should be specified")
+        if spa_fea:
+            self.spa_fea = spa_fea
+        else:
+            sys.exit("ERROR: argument 'spa_fea' should be specified")
+
+        # pre-process data if needed
+        # WARNNING: when memory mapping is used we get a collection of files
+        print("Processing DF for inference")
+        file = data_utils_class.getNormalDataInfer(
+            self.max_ind_range,
+            self.sub_sample_rate,
+            self.tar_fea,
+            self.den_fea,
+            self.spa_fea,
+            df=df
+        )
+        # load and preprocess data
+        self.X_int = file["X_int"]  # continuous  feature
+        self.X_cat = file["X_cat"]  # categorical feature
+        self.y = file["y"]          # target
+        self.counts = file["counts"]
+        self.m_den = self.X_int.shape[1]  # den_fea
+        self.n_emb = len(self.counts)
+
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return [
+                self[idx] for idx in range(
+                    index.start or 0, index.stop or len(self), index.step or 1
+                )
+            ]
+        i = index
+        if self.max_ind_range > 0:
+            return self.X_int[i], self.X_cat[i] % self.max_ind_range, self.y[i]
+        else:
+            return self.X_int[i], self.X_cat[i], self.y[i]
+
+    def _default_preprocess(self, X_int, X_cat, y):
+        X_int = torch.log(torch.tensor(X_int, dtype=torch.float) + 1)
+        if self.max_ind_range > 0:
+            X_cat = torch.tensor(X_cat % self.max_ind_range, dtype=torch.long)
+        else:
+            X_cat = torch.tensor(X_cat, dtype=torch.long)
+        y = torch.tensor(y.astype(np.float32))
+
+        return X_int, X_cat, y
+
+    def __len__(self):
+        return len(self.y)
+
+
 def collate_wrapper_normal(list_of_tuples):
     # where each tuple is (X_int, X_cat, y)
     transposed_data = list(zip(*list_of_tuples))
@@ -534,6 +610,32 @@ def make_normal_data_and_loaders(args):
         )
 
     return train_data, train_loader, test_data, test_loader
+
+
+def make_normal_data_and_loaders_infer(args, df):
+
+    infer_data = NormalDatasetInfer(
+        args.data_set,
+        args.max_ind_range,
+        args.data_sub_sample_rate,
+        args.data_randomize,
+        args.tar_fea,
+        args.den_fea,
+        args.spa_fea,
+        df=df
+    )
+
+    infer_loader = torch.utils.data.DataLoader(
+        infer_data,
+        batch_size=args.mini_batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        collate_fn=collate_wrapper_normal,
+        pin_memory=False,
+        drop_last=False,  # True
+    )
+
+    return infer_data, infer_loader
 
 
 # uniform ditribution (input data)

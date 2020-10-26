@@ -571,8 +571,8 @@ class DLRM_Model(object):
         parser.add_argument("--n-data-split", type=int, default=7)
         # Number of Numerical/Dense Features: y / den-fea / cat-fea
         parser.add_argument("--tar-fea", type=int, default=1)
-        parser.add_argument("--den-fea", type=int, default=13)  # 13 dense  features (numerical)
-        parser.add_argument("--spa-fea", type=int, default=26)  # 26 sparse features (categorical)
+        parser.add_argument("--den-fea", type=int, default=0)  # 13 dense  features (numerical)
+        parser.add_argument("--spa-fea", type=int, default=0)  # 26 sparse features (categorical)
 
         self.args = parser.parse_args()
 
@@ -1314,7 +1314,7 @@ class DLRM_Model(object):
             final_results[key] = validation_results[key]
         return final_results
 
-    def infer(self, input_data):
+    def infer(self, df):
 
         # Confirming we are only performing inference
         if not self.args.inference_only:
@@ -1324,21 +1324,31 @@ class DLRM_Model(object):
             sys.exit("ERROR: argument load_model should have the model to load")
 
         dlrm_infer = torch.load(self.args.load_model_onnx)
-        #print(dlrm_infer.eval())
-        # Load all the TEST data to Evaluate
-        #total_samples = len(input_data)
-        #args.test_mini_batch_size = total_samples
-        # total_samples = len(train_data) # Kills the Computer
-        # args.mini_batch_size = total_samples
-        #train_data2, train_ld2, test_data2, test_ld2 = dp.make_fazwaz_data_and_loaders(args)
-        #self.train_data, self.train_ld, self.test_data, self.test_ld = \
-        #    dp.make_normal_data_and_loaders(self.args)
+
+        # Preprocess the Data
+        infer_data, infer_ld = dp.make_normal_data_and_loaders_infer(self.args, df)
 
         # Input data for DLRM model consist of:
         # - Tensor of Dense Features (giving X). This uses the bottom layer (bot_l)
         # - Sparse features (using embeddings): lS_o, lS_i (giving ly). This uses the embedding later (emb_l)
         # - Interaction features (dense and sparse). This combines X with ly.
-        #for j, (X, lS_o, lS_i, T) in enumerate(test_ld2):
-        #y_pred = dlrm_infer(X, lS_o, lS_i)
+        y_true = []
+        y_pred = []
+        for j, (X, lS_o, lS_i, T) in enumerate(infer_ld):
+            y_true = y_true + T.tolist()
+            y_pred = y_pred + dlrm_infer(X, lS_o, lS_i).tolist()
 
-        return 0
+        # PBV new/added
+        classification_report = sklearn.metrics.classification_report(
+            y_true=y_true, #df.iloc[:,0],
+            y_pred=np.round(y_pred),
+            target_names=['Not Clicked', 'Clicked'],
+            zero_division=0
+        )
+        confusion_matrix = sklearn.metrics.confusion_matrix(
+            y_true=y_true, #df.iloc[:,0],
+            y_pred=np.round(y_pred)
+        )
+        print(classification_report, confusion_matrix)
+
+        return y_pred

@@ -18,8 +18,7 @@ class RecsysOptimeyez():
                  run_tag = RUN_TAG, #None,
                  API_KEY = None, #NEPTUNE_API_KEY,
                  model_name = 'model_all',
-                 trial_size=20,
-                 den_fea = None
+                 trial_size=20
                  ):
         self.verbose = verbose
         self.to_path = to_path
@@ -30,12 +29,6 @@ class RecsysOptimeyez():
         self.API_KEY = API_KEY
         self.model_name = model_name
         self.trial_size = trial_size
-        if den_fea:
-            self.den_fea = den_fea
-        else:
-            sys.exit(
-                "ERROR: argument 'den_fea' should be specified"
-            )
 
     def get_params(self, deep=True):
         return {'verbose': self.verbose,
@@ -46,8 +39,7 @@ class RecsysOptimeyez():
                 'run_tag': self.run_tag,
                 'API_KEY': self.API_KEY,
                 'model_name': self.model_name,
-                'trial_size': self.trial_size,
-                'den_fea': self.den_fea
+                'trial_size': self.trial_size
                 }
 
     def set_params(self, **params):
@@ -66,7 +58,7 @@ class RecsysOptimeyez():
         top_layers = []
         for i in range(best_params['n_bot_layers']):
             if i == 0:
-                bot_layers.append(self.den_fea)  # This value is related to the number of numerical columns (fixed by input data)
+                bot_layers.append(params["den_fea"])  # This value is related to the number of numerical columns (fixed by input data)
             elif i == (best_params['n_bot_layers'] - 1):
                 bot_layers.append(best_params['arch_sparse_feature_size'])  # This value is related to the arch_sparse_feature_size
             else:
@@ -99,7 +91,7 @@ class RecsysOptimeyez():
             arch_sparse_feature_size = trial.suggest_int('arch_sparse_feature_size', 16, 32)
             for i in range(n_bot_layers):
                 if i == 0:
-                    bot_layers.append(self.den_fea)  # This value is related to the number of numerical columns (fixed by input data)
+                    bot_layers.append(params["den_fea"])  # This value is related to the number of numerical columns (fixed by input data)
                 elif i == (n_bot_layers-1):
                     bot_layers.append(arch_sparse_feature_size)  # This value is related to the arch_sparse_feature_size
                 else:
@@ -136,32 +128,12 @@ class RecsysOptimeyez():
             return validation_results['best_pre_auc_test'] # ['best_auc_test'] Need to decide which metric is best
 
         # Assigning fixed parameters to params
-        # params = {
-        #     "data_generation": 'dataset',
-        #     "data_set": 'normal', #'kaggle',
-        #
-        #     "raw_data_file": './input/trainday0day0day0day0.txt',
-        #     # "processed_data_file": './input/kaggleAdDisplayChallenge_processed.npz',
-        #     "loss_function": 'bce',  # loss_function,
-        #     #"round_targets": True,  We want to have a ranked list instead of yes/no
-        #     "mini_batch_size": 32,  # 128,
-        #     "print_freq": 32,  # 256,
-        #     "test_freq": 32,  # 128,
-        #     "mlperf_logging": True,
-        #     "print_time": True,
-        #     "test_mini_batch_size": 32,  # 256,
-        #     # "test_num_workers": 16
-        #     # "save_model ":  'dlrm_criteo_kaggle_.pytorch'
-        #     # "use_gpu": True
-        #     # "enable_profiling": True,
-        #     # "plot_compute_graph": True,
-        # }
         params = {
             "data_generation": 'dataset',
-            "data_set": 'normal',
-            "raw_data_file": './input/recsys_users.txt',
+            "data_set": 'normal', #'kaggle',
+            "raw_data_file": './input/trainday0day0day0day0.txt',
             # "processed_data_file": './input/kaggleAdDisplayChallenge_processed.npz',
-            "loss_function": 'wbce',  # loss_function,
+            "loss_function": 'bce',  # loss_function,
             #"round_targets": True,  We want to have a ranked list instead of yes/no
             "mini_batch_size": 32,  # 128,
             "print_freq": 32,  # 256,
@@ -169,16 +141,36 @@ class RecsysOptimeyez():
             "mlperf_logging": True,
             "print_time": True,
             "test_mini_batch_size": 32,  # 256,
-            "loss_weights": '0.0348-0.9652',
-            "tar_fea": 1,  # single target
-            "den_fea": 240,  # 90  # 13 dense  features (numerical)          # PBV Main change between datasets
-            "spa_fea": 35  # 51  # 26 sparse features (categorical)      # PBV Main change between datasets
+            "den_fea": 13,
+            "spa_fea": 26
             # "test_num_workers": 16
             # "save_model ":  'dlrm_criteo_kaggle_.pytorch'
             # "use_gpu": True
             # "enable_profiling": True,
             # "plot_compute_graph": True,
         }
+        # params = {
+        #     "data_generation": 'dataset',
+        #     "data_set": 'normal',
+        #     "raw_data_file": './input/recsys_users.txt',
+        #     # "processed_data_file": './input/kaggleAdDisplayChallenge_processed.npz',
+        #     "loss_function": 'wbce',  # loss_function,
+        #     #"round_targets": True,  We want to have a ranked list instead of yes/no
+        #     "mini_batch_size": 128,
+        #     "print_freq": 256,
+        #     "test_freq": 128,
+        #     "mlperf_logging": True,
+        #     "print_time": True,
+        #     "test_mini_batch_size": 256,
+        #     "loss_weights": '0.0348-0.9652',
+        #     "den_fea": 240,  # 90  # 13 dense  features (numerical)          # PBV Main change between datasets
+        #     "spa_fea": 35    # 51  # 26 sparse features (categorical)      # PBV Main change between datasets
+        #     # "test_num_workers": 16
+        #     # "save_model ":  'dlrm_criteo_kaggle_.pytorch'
+        #     # "use_gpu": True
+        #     # "enable_profiling": True,
+        #     # "plot_compute_graph": True,
+        # }
 
         neptune.init('pedrobaiz/dlrm', api_token=self.API_KEY)
         neptune.create_experiment('recsys-' + self.model_name, tags=[str(self.neptune_tags)])

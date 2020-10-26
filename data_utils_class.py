@@ -1008,14 +1008,17 @@ def getNormalData(
 
                 y[i] = target
                 # PBV X_int[i] = np.array(line[1:14], dtype=np.int32)
+                # TODO: Potential Bug! it should be form 1 to 13 (not 14)
                 X_int[i] = np.array(line[1:(tar_fea + den_fea)], dtype=np.int32)
                 if max_ind_range > 0:
+                    print("DebugA", line)
                     X_cat[i] = np.array(
                         # PBV list(map(lambda x: int(x, 16) % max_ind_range, line[14:])),
-                        list(map(lambda x: int(x, 16) % max_ind_range, line[(tar_fea + args.den_fea):])),
+                        list(map(lambda x: int(x, 16) % max_ind_range, line[(tar_fea + den_fea):])),
                         dtype=np.int32
                     )
                 else:
+                    print("DebugB", line)
                     X_cat[i] = np.array(
                         # PBV list(map(lambda x: int(x, 16), line[14:])),
                         list(map(lambda x: int(x, 16), line[(tar_fea + den_fea):])),
@@ -1146,6 +1149,118 @@ def getNormalData(
     )
 
     return o_file
+
+
+def getNormalDataInfer(
+        max_ind_range=-1,
+        sub_sample_rate=0.0,
+        tar_fea=0,          # To ensure it is assigned or gives error
+        den_fea=0,          # To ensure it is assigned or gives error
+        spa_fea=0,          # To ensure it is assigned or gives error
+        df=None
+):
+    # Passes through entire dataset and defines dictionaries for categorical
+    # features and determines the number of total categories.
+    #
+    # Inputs:
+    #    datafile : path to downloaded raw data file
+    #    o_filename (str): saves results under o_filename if filename is not ""
+    #
+    # Output:
+    #   o_file (str): output file path
+
+    # process a file worth of data and reinitialize data
+    # note that a file main contain a single or multiple splits
+    df = df.fillna(0)
+    for index, col in enumerate(df.columns.tolist()):
+        if index >= tar_fea and index < (tar_fea + den_fea):
+            df[col] = df[col].astype(int, copy=False)
+    df = df.astype('str')
+    # Check DF
+    num_data_in_split = len(df)
+    if num_data_in_split == 0:
+        sys.exit("ERROR: DataFrame for Inference is Empty")
+    # Initialise
+    y = np.zeros(num_data_in_split, dtype="i4")  # 4 byte int
+    X_int = np.zeros((num_data_in_split, den_fea), dtype="i4")  # 4 byte int
+    X_cat = np.zeros((num_data_in_split, spa_fea), dtype="i4")  # 4 byte int
+    if sub_sample_rate == 0.0:
+        rand_u = 1.0
+    else:
+        rand_u = np.random.uniform(low=0.0, high=1.0, size=num_data_in_split)
+
+    i = 0
+    convertDicts = [{} for _ in range(spa_fea)]
+    for index, row in df.iterrows():
+        # process a line (data point)
+        line = row.tolist() #line.split('\t')
+        # set missing values to zero
+        for j in range(len(line)):
+            if (line[j] == '') or (line[j] == '\n'):
+                line[j] = '0'
+        # sub-sample data by dropping zero targets, if needed
+        target = np.int32(line[0])
+        if target == 0 and \
+           (rand_u if sub_sample_rate == 0.0 else rand_u[index]) < sub_sample_rate:
+            continue
+
+        y[i] = target
+        X_int[i] = np.array(line[1:(tar_fea + den_fea)], dtype=np.int32)
+        if max_ind_range > 0:
+            X_cat[i] = np.array(
+                list(map(lambda x: int(x, 16) % max_ind_range, line[(tar_fea + den_fea):])),
+                dtype=np.int32
+            )
+        else:
+            X_cat[i] = np.array(
+                list(map(lambda x: int(x, 16), line[(tar_fea + den_fea):])),
+                dtype=np.int32
+            )
+        # count uniques
+        for j in range(spa_fea):
+            convertDicts[j][X_cat[i][j]] = 1
+        i += 1
+    file_main = {
+        "X_int": X_int[0:i, :],
+        "X_cat_t": np.transpose(X_cat[0:i, :]),  # transpose of the data
+        "y": y[0:i]
+    }
+
+    # WARNING: to get reproducable sub-sampling results you must reset the seed below
+    # np.random.seed(123)
+    # dictionary files
+    #convertDicts = [{} for _ in range(spa_fea)]
+    counts = np.zeros(spa_fea, dtype=np.int32)
+    # create dictionaries
+    dict_file_j = {}
+    for j in range(spa_fea):
+        for i, x in enumerate(convertDicts[j]):
+            convertDicts[j][x] = i
+        dict_file_j[j] = np.array(list(convertDicts[j]), dtype=np.int32)
+        counts[j] = len(convertDicts[j])
+    # store (uniques and) counts
+    file_main["counts"] = counts
+    file_main["dict_file_j"] = dict_file_j
+
+    # Code that was inside "processCriteoAdData"
+    # Approach 2a: using pre-computed dictionaries
+    X_cat_t = np.zeros(file_main["X_cat_t"].shape)
+    for j in range(X_cat_t.shape[0]):
+        for k, x in enumerate(file_main["X_cat_t"][j, :]):
+            X_cat_t[j, k] = convertDicts[j][x]
+    # continuous features
+    X_int = file_main["X_int"]
+    X_int[X_int < 0] = 0
+    # targets
+    y = file_main["y"]
+
+    # Final processed data
+    file_main["X_int"] = X_int
+    file_main["X_cat_t"] = X_cat_t
+    file_main["X_cat"] = np.transpose(X_cat_t)
+    file_main["y"] = y
+
+    return file_main
 
 
 def loadDataset(
